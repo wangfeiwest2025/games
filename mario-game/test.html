@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Super Mario Test</title>
+    <style>
+        body { background: #5c94fc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial; }
+        #game { position: relative; }
+        canvas { background: #87CEEB; border: 2px solid #000; }
+        #debug { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px; font-size: 12px; }
+        #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
+        button { padding: 10px 30px; font-size: 20px; cursor: pointer; margin: 10px; }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <canvas id="c" width="800" height="400"></canvas>
+        <div id="debug">Press arrow keys to move</div>
+        <div id="menu">
+            <h1>SUPER MARIO</h1>
+            <button onclick="startGame()">START GAME</button>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d');
+        const debug = document.getElementById('debug');
+        const menu = document.getElementById('menu');
+        
+        let game = { running: false, player: null, keys: {} };
+        const SPEED = 5;
+        
+        document.addEventListener('keydown', e => {
+            game.keys[e.code] = true;
+            debug.innerHTML = `Keys: ${JSON.stringify(game.keys)}`;
+            console.log('keydown:', e.code);
+        });
+        
+        document.addEventListener('keyup', e => {
+            game.keys[e.code] = false;
+            debug.innerHTML = `Keys: ${JSON.stringify(game.keys)}`;
+        });
+        
+        function initPlayer() {
+            return { x: 50, y: 300, w: 30, h: 40, vx: 0, vy: 0, onGround: false };
+        }
+        
+        function startGame() {
+            game.running = true;
+            game.player = initPlayer();
+            menu.style.display = 'none';
+            canvas.focus();
+            gameLoop();
+        }
+        
+        function update() {
+            if (!game.running) return;
+            const p = game.player;
+            
+            // Movement
+            if (game.keys['ArrowLeft'] || game.keys['KeyA']) {
+                p.x -= SPEED;
+            }
+            if (game.keys['ArrowRight'] || game.keys['KeyD']) {
+                p.x += SPEED;
+            }
+            if ((game.keys['Space'] || game.keys['ArrowUp']) && p.onGround) {
+                p.vy = -15;
+                p.onGround = false;
+            }
+            
+            // Gravity
+            p.vy += 0.8;
+            p.y += p.vy;
+            
+            // Ground collision
+            if (p.y > 350) {
+                p.y = 350;
+                p.vy = 0;
+                p.onGround = true;
+            }
+            
+            // Bounds
+            if (p.x < 0) p.x = 0;
+            if (p.x > 770) p.x = 770;
+            
+            debug.innerHTML = `Running: ${game.running} | X: ${p.x.toFixed(0)} Y: ${p.y.toFixed(0)} | Keys: ${JSON.stringify(game.keys)}`;
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, 800, 400);
+            
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, 380, 800, 20);
+            
+            if (game.player) {
+                const p = game.player;
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(p.x, p.y, p.w, p.h);
+            }
+        }
+        
+        function gameLoop() {
+            if (!game.running) return;
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        draw();
+    </script>
+</body>
+</html>
