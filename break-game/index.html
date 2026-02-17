@@ -2,75 +2,83 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>打砖块 / Breakout</title>
   <style>
-    * { box-sizing: border-box; }
-    body {
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
       margin: 0;
-      min-height: 100vh;
-      font-family: sans-serif;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 10px;
     }
     .game-wrap {
       width: 100%;
-      max-width: 800px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      max-width: 600px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     }
     .topbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
     }
-    .title { font-size: 1.5em; font-weight: bold; color: #fff; }
+    .title { font-size: 1.2em; font-weight: bold; color: #fff; }
+    .controls { display: flex; gap: 6px; flex-wrap: wrap; }
     .controls button, .back-link {
       background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.3);
+      border: 1px solid rgba(255,255,255,0.25);
       color: #fff;
-      padding: 8px 16px;
-      border-radius: 8px;
+      padding: 6px 12px;
+      border-radius: 6px;
       cursor: pointer;
       text-decoration: none;
-      margin-left: 8px;
-    }
-    .controls button:hover, .back-link:hover {
-      background: rgba(255,255,255,0.2);
+      font-size: 0.9em;
     }
     .stats {
       display: flex;
-      gap: 20px;
-      margin-bottom: 15px;
+      gap: 15px;
+      margin-bottom: 10px;
       color: #fff;
-      font-size: 1.1em;
+      font-size: 1em;
     }
     canvas {
       width: 100%;
+      aspect-ratio: 16/10;
       display: block;
-      border-radius: 8px;
-      background: #0a0a1a;
+      border-radius: 6px;
+      background: #080815;
+      touch-action: none;
     }
     .overlay {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.75);
       display: flex;
       align-items: center;
       justify-content: center;
       color: #fff;
-      font-size: 1.5em;
-      border-radius: 8px;
+      font-size: 1.2em;
+      border-radius: 6px;
+      text-align: center;
+      padding: 20px;
     }
-    .canvas-shell { position: relative; }
+    .canvas-shell { position: relative; width: 100%; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -81,7 +89,7 @@
       <div class="controls">
         <button id="langBtn">EN</button>
         <button id="restartBtn">重新开始</button>
-        <a class="back-link" href="../index.html">返回游戏中心</a>
+        <a class="back-link" href="../index.html">返回</a>
       </div>
     </div>
     <div class="stats">
@@ -89,9 +97,9 @@
       <span id="lives">生命: 3</span>
     </div>
     <div class="canvas-shell">
-      <canvas id="c" width="800" height="500"></canvas>
+      <canvas id="c"></canvas>
       <div class="overlay" id="overlay">
-        <div id="overlayText">按空格键开始</div>
+        <div id="overlayText">按空格或点击开始</div>
       </div>
     </div>
   </div>
@@ -108,25 +116,20 @@
     var langBtn = document.getElementById('langBtn');
     var restartBtn = document.getElementById('restartBtn');
 
+    // Set canvas size
+    function resizeCanvas() {
+      var container = canvas.parentElement;
+      var width = container.clientWidth;
+      var height = width * 10 / 16;
+      canvas.width = width;
+      canvas.height = height;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
     var i18n = {
-      zh: {
-        title: '打砖块 Breakout',
-        score: '分数',
-        lives: '生命',
-        start: '按空格键开始',
-        win: '你赢了!',
-        lose: '游戏结束',
-        restart: '重新开始'
-      },
-      en: {
-        title: 'Breakout 打砖块',
-        score: 'Score',
-        lives: 'Lives',
-        start: 'Press SPACE to start',
-        win: 'You Win!',
-        lose: 'Game Over',
-        restart: 'Restart'
-      }
+      zh: { title: '打砖块 Breakout', score: '分数', lives: '生命', start: '按空格或点击开始', win: '你赢了!', lose: '游戏结束' },
+      en: { title: 'Breakout 打砖块', score: 'Score', lives: 'Lives', start: 'Press SPACE or tap to start', win: 'You Win!', lose: 'Game Over' }
     };
 
     var lang = 'zh';
@@ -135,19 +138,20 @@
     var lives = 3;
     var keys = {};
 
-    var paddle = { w: 120, h: 15, x: 340, y: 460, speed: 8 };
-    var ball = { x: 400, y: 440, r: 8, dx: 4, dy: -4, speed: 5 };
+    var paddle = { w: 100, h: 12, x: 0, y: 0, speed: 8 };
+    var ball = { x: 0, y: 0, r: 8, dx: 3, dy: -3, speed: 5 };
     var bricks = [];
     var brickRows = 5;
-    var brickCols = 10;
-    var brickW = 70;
-    var brickH = 20;
-    var brickPad = 5;
+    var brickCols = 8;
+    var brickW = 0;
+    var brickH = 18;
+    var brickPad = 4;
     var brickTop = 50;
-    var brickLeft = 30;
+    var brickLeft = 10;
 
     function initBricks() {
       bricks = [];
+      brickW = (canvas.width - brickLeft * 2 - brickPad * (brickCols - 1)) / brickCols;
       for (var r = 0; r < brickRows; r++) {
         for (var c = 0; c < brickCols; c++) {
           bricks.push({
@@ -161,16 +165,19 @@
     }
 
     function resetBall() {
-      ball.x = paddle.x + paddle.w / 2;
-      ball.y = paddle.y - ball.r - 5;
-      ball.dx = (Math.random() > 0.5 ? 1 : -1) * 4;
-      ball.dy = -4;
+      ball.x = canvas.width / 2;
+      ball.y = canvas.height - 50;
+      ball.dx = (Math.random() > 0.5 ? 1 : -1) * 3;
+      ball.dy = -3;
     }
 
     function reset() {
       score = 0;
       lives = 3;
       state = 'ready';
+      paddle.w = canvas.width * 0.25;
+      paddle.h = 12;
+      paddle.y = canvas.height - 30;
       paddle.x = canvas.width / 2 - paddle.w / 2;
       initBricks();
       resetBall();
@@ -198,49 +205,42 @@
       }
     }
 
-    function drawRect(x, y, w, h, color) {
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y, w, h);
-    }
-
-    function drawCircle(x, y, r, color) {
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
     function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#080815';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw bricks
+      // Bricks
       for (var i = 0; i < bricks.length; i++) {
         var b = bricks[i];
         if (!b.alive) continue;
-        var color = b.hp === 2 ? '#ff6b6b' : '#4ecdc4';
-        drawRect(b.x, b.y, brickW, brickH, color);
+        ctx.fillStyle = b.hp === 2 ? '#ff6b6b' : '#4ecdc4';
+        ctx.fillRect(b.x, b.y, brickW, brickH);
       }
 
-      // Draw paddle
-      drawRect(paddle.x, paddle.y, paddle.w, paddle.h, '#45b7d1');
+      // Paddle
+      ctx.fillStyle = '#45b7d1';
+      ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
 
-      // Draw ball
-      drawCircle(ball.x, ball.y, ball.r, '#fff');
+      // Ball
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
     }
 
     function update() {
       if (state !== 'running') return;
 
-      // Move paddle
+      // Paddle
       if (keys['ArrowLeft'] || keys['a']) paddle.x -= paddle.speed;
       if (keys['ArrowRight'] || keys['d']) paddle.x += paddle.speed;
       paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, paddle.x));
 
-      // Move ball
+      // Ball
       ball.x += ball.dx;
       ball.y += ball.dy;
 
-      // Wall collision
+      // Walls
       if (ball.x - ball.r < 0 || ball.x + ball.r > canvas.width) {
         ball.dx = -ball.dx;
       }
@@ -248,17 +248,17 @@
         ball.dy = -ball.dy;
       }
 
-      // Paddle collision
+      // Paddle
       if (ball.y + ball.r > paddle.y &&
           ball.y - ball.r < paddle.y + paddle.h &&
           ball.x > paddle.x &&
           ball.x < paddle.x + paddle.w) {
         ball.dy = -Math.abs(ball.dy);
         var hitPos = (ball.x - paddle.x) / paddle.w;
-        ball.dx = (hitPos - 0.5) * 8;
+        ball.dx = (hitPos - 0.5) * 6;
       }
 
-      // Brick collision
+      // Bricks
       for (var i = 0; i < bricks.length; i++) {
         var b = bricks[i];
         if (!b.alive) continue;
@@ -274,7 +274,7 @@
         }
       }
 
-      // Ball falls
+      // Fall
       if (ball.y - ball.r > canvas.height) {
         lives--;
         if (lives <= 0) {
@@ -298,69 +298,55 @@
       requestAnimationFrame(gameLoop);
     }
 
-    function startGame() {
-      if (state === 'ready' || state === 'paused') {
-        state = 'running';
-      }
-    }
-
-    // Event listeners
+    // Keyboard
     document.addEventListener('keydown', function(e) {
       keys[e.key] = true;
       if (e.code === 'Space') {
         e.preventDefault();
         if (state === 'ready' || state === 'paused') {
           state = 'running';
-        } else if (state === 'running') {
-          state = 'paused';
         }
       }
     });
-
     document.addEventListener('keyup', function(e) {
       keys[e.key] = false;
     });
 
+    // Mouse
     canvas.addEventListener('mousemove', function(e) {
       var rect = canvas.getBoundingClientRect();
       var scaleX = canvas.width / rect.width;
       paddle.x = (e.clientX - rect.left) * scaleX - paddle.w / 2;
       paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, paddle.x));
-      if (state === 'ready') {
-        ball.x = paddle.x + paddle.w / 2;
-      }
+      if (state === 'ready') ball.x = paddle.x + paddle.w / 2;
+    });
+    canvas.addEventListener('click', function() {
+      if (state === 'ready' || state === 'paused') state = 'running';
     });
 
-    // Touch support for mobile
-    canvas.addEventListener('touchmove', function(e) {
+    // Touch
+    function handleTouch(e) {
       e.preventDefault();
+      var touch = e.touches[0] || e.changedTouches[0];
       var rect = canvas.getBoundingClientRect();
       var scaleX = canvas.width / rect.width;
-      var touch = e.touches[0];
       paddle.x = (touch.clientX - rect.left) * scaleX - paddle.w / 2;
       paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, paddle.x));
-      if (state === 'ready') {
-        ball.x = paddle.x + paddle.w / 2;
-      }
-    }, { passive: false });
-
+      if (state === 'ready') ball.x = paddle.x + paddle.w / 2;
+    }
+    canvas.addEventListener('touchmove', handleTouch, { passive: false });
     canvas.addEventListener('touchstart', function(e) {
-      e.preventDefault();
-      if (state === 'ready' || state === 'paused') {
-        state = 'running';
-      }
+      if (state === 'ready' || state === 'paused') state = 'running';
     }, { passive: false });
 
-    canvas.addEventListener('click', startGame);
-
+    // Buttons
     langBtn.addEventListener('click', function() {
       lang = lang === 'zh' ? 'en' : 'zh';
       updateUI();
     });
-
     restartBtn.addEventListener('click', reset);
 
-    // Initialize
+    // Start
     reset();
     gameLoop();
   })();
