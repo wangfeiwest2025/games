@@ -69,7 +69,7 @@ body {
 
   <canvas id="game" width="400" height="400"></canvas>
 
-  <p id="hint">滑动可四方向；点击按主方向判定：上/下半屏可向上/向下，左/右半屏可向左/向右</p>
+  <p id="hint">滑动可四方向；点击按主方向判定：上/下半屏可向上/向下，左/右半屏可向左/向右；按空格开始</p>
 
   <button id="startBtn" type="button">开始游戏</button>
 
@@ -291,7 +291,10 @@ body {
   }, { passive: false });
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowUp') {
+    if (!running && (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar')) {
+      e.preventDefault();
+      start();
+    } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setUp();
     } else if (e.key === 'ArrowDown') {
