@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🪙 接金币 - Coin Catcher</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+        }
+        .header {
+            text-align: center;
+            padding: 20px;
+            color: white;
+        }
+        .header h1 {
+            font-size: 2em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stats {
+            display: flex;
+            gap: 40px;
+            margin: 10px 0;
+            color: white;
+            font-size: 1.2em;
+        }
+        .stats span {
+            background: rgba(255,255,255,0.1);
+            padding: 8px 20px;
+            border-radius: 20px;
+        }
+        #gameCanvas {
+            border: 3px solid rgba(102, 126, 234, 0.5);
+            border-radius: 10px;
+            background: rgba(0,0,0,0.3);
+            cursor: none;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+        button {
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .back-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-decoration: none;
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .instructions {
+            color: rgba(255,255,255,0.6);
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回游戏中心</a>
+    
+    <div class="header">
+        <h1>🪙 接金币 Coin Catcher</h1>
+        <div class="stats">
+            <span>分数: <strong id="score">0</strong></span>
+            <span>最高分: <strong id="highScore">0</strong></span>
+            <span>生命: <strong id="lives">❤️❤️❤️</strong></span>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas" width="600" height="500"></canvas>
+    
+    <p class="instructions">🖱️ 移动鼠标或使用 ← → 方向键控制篮子接住金币！</p>
+    
+    <div class="controls">
+        <button class="btn-primary" id="startBtn" onclick="startGame()">🎮 开始游戏</button>
+        <button class="btn-secondary" onclick="resetGame()">🔄 重新开始</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 游戏状态
+        let gameRunning = false;
+        let score = 0;
+        let highScore = localStorage.getItem('coinGameHighScore') || 0;
+        let lives = 3;
+        let gameSpeed = 3;
+        
+        // 篮子
+        const basket = {
+            x: canvas.width / 2 - 50,
+            y: canvas.height - 60,
+            width: 100,
+            height: 30,
+            speed: 8,
+            dx: 0
+        };
+        
+        // 金币数组
+        let coins = [];
+        let goldCoins = [];
+        let diamonds = [];
+        let bombs = [];
+        
+        // 更新最高分显示
+        document.getElementById('highScore').textContent = highScore;
+        
+        // 键盘控制
+        let keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.key === ' ' && !gameRunning) startGame();
+        });
+        document.addEventListener('keyup', (e) => keys[e.key] = false);
+        
+        // 鼠标控制
+        canvas.addEventListener('mousemove', (e) => {
+            if (!gameRunning) return;
+            const rect = canvas.getBoundingClientRect();
+            basket.x = e.clientX - rect.left - basket.width / 2;
+            basket.x = Math.max(0, Math.min(canvas.width - basket.width, basket.x));
+        });
+        
+        function spawnCoin() {
+            const types = ['gold', 'gold', 'gold', 'diamond', 'bomb'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const size = type === 'diamond' ? 15 : type === 'bomb' ? 20 : 12;
+            const speed = gameSpeed + Math.random() * 2;
+            
+            const item = {
+                x: Math.random() * (canvas.width - size * 2) + size,
+                y: -size,
+                size: size,
+                speed: speed,
+                type: type,
+                rotation: 0,
+                rotationSpeed: (Math.random() - 0.5) * 0.2
+            };
+            
+            if (type === 'gold') goldCoins.push(item);
+            else if (type === 'diamond') diamonds.push(item);
+            else if (type === 'bomb') bombs.push(item);
+        }
+        
+        function drawBasket() {
+            // 篮子主体
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.moveTo(basket.x, basket.y);
+            ctx.lineTo(basket.x + 10, basket.y + basket.height);
+            ctx.lineTo(basket.x + basket.width - 10, basket.y + basket.height);
+            ctx.lineTo(basket.x + basket.width, basket.y);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 篮子边缘
+            ctx.strokeStyle = '#D2691E';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // 篮子纹理
+            ctx.strokeStyle = '#A0522D';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(basket.x + 15 + i * 20, basket.y);
+                ctx.lineTo(basket.x + 15 + i * 18, basket.y + basket.height);
+                ctx.stroke();
+            }
+        }
+        
+        function drawCoin(coin, x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(coin.rotation);
+            
+            // 金币
+            if (coin.type === 'gold') {
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, coin.size);
+                gradient.addColorStop(0, '#FFD700');
+                gradient.addColorStop(0.5, '#FFA500');
+                gradient.addColorStop(1, '#FF8C00');
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, coin.size, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.fillStyle = '#B8860B';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('$', 0, 0);
+            }
+            // 钻石
+            else if (coin.type === 'diamond') {
+                ctx.beginPath();
+                ctx.moveTo(0, -coin.size);
+                ctx.lineTo(coin.size, 0);
+                ctx.lineTo(0, coin.size);
+                ctx.lineTo(-coin.size, 0);
+                ctx.closePath();
+                
+                const gradient = ctx.createLinearGradient(-coin.size, -coin.size, coin.size, coin.size);
+                gradient.addColorStop(0, '#00FFFF');
+                gradient.addColorStop(0.5, '#00CED1');
+                gradient.addColorStop(1, '#20B2AA');
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                ctx.strokeStyle = '#00FFFF';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            // 炸弹
+            else if (coin.type === 'bomb') {
+                ctx.beginPath();
+                ctx.arc(0, 0, coin.size, 0, Math.PI * 2);
+                ctx.fillStyle = '#333';
+                ctx.fill();
+                
+                // 炸弹引信
+                ctx.fillStyle = '#8B0000';
+                ctx.beginPath();
+                ctx.arc(0, -5, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = '#FF0000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, -10);
+                ctx.quadraticCurveTo(5, -20, 10, -15);
+                ctx.stroke();
+                
+                // 炸弹表情
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('💣', 0, 2);
+            }
+            
+            ctx.restore();
+        }
+        
+        function drawBackground() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function checkCollision(item) {
+            return item.x > basket.x && 
+                   item.x < basket.x + basket.width &&
+                   item.y + item.size > basket.y &&
+                   item.y - item.size < basket.y + basket.height;
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            // 键盘移动
+            if (keys['ArrowLeft'] || keys['a']) basket.x -= basket.speed;
+            if (keys['ArrowRight'] || keys['d']) basket.x += basket.speed;
+            basket.x = Math.max(0, Math.min(canvas.width - basket.width, basket.x));
+            
+            // 更新所有物品
+            [...goldCoins, ...diamonds, ...bombs].forEach(item => {
+                item.y += item.speed;
+                item.rotation += item.rotationSpeed;
+            });
+            
+            // 检查接住
+            goldCoins = goldCoins.filter(coin => {
+                if (checkCollision(coin)) {
+                    score += 10;
+                    document.getElementById('score').textContent = score;
+                    // 加速
+                    if (score % 100 === 0) gameSpeed += 0.5;
+                    return false;
+                }
+                return coin.y < canvas.height + 20;
+            });
+            
+            diamonds = diamonds.filter(diamond => {
+                if (checkCollision(diamond)) {
+                    score += 50;
+                    document.getElementById('score').textContent = score;
+                    return false;
+                }
+                return diamond.y < canvas.height + 20;
+            });
+            
+            bombs = bombs.filter(bomb => {
+                if (checkCollision(bomb)) {
+                    lives--;
+                    updateLives();
+                    if (lives <= 0) gameOver();
+                    return false;
+                }
+                return bomb.y < canvas.height + 40;
+            });
+            
+            // 掉落未接住
+            goldCoins = goldCoins.filter(coin => coin.y < canvas.height + 20);
+            diamonds = diamonds.filter(diamond => diamond.y < canvas.height + 20);
+            bombs = bombs.filter(bomb => bomb.y < canvas.height + 40);
+        }
+        
+        function updateLives() {
+            document.getElementById('lives').textContent = '❤️'.repeat(lives);
+        }
+        
+        function draw() {
+            drawBackground();
+            drawBasket();
+            goldCoins.forEach(coin => drawCoin(coin, coin.x, coin.y));
+            diamonds.forEach(diamond => drawCoin(diamond, diamond.x, diamond.y));
+            bombs.forEach(bomb => drawCoin(bomb, bomb.x, bomb.y));
+        }
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function spawnItems() {
+            if (!gameRunning) return;
+            spawnCoin();
+            const interval = Math.max(500, 1500 - score);
+            setTimeout(spawnItems, interval);
+        }
+        
+        function startGame() {
+            if (gameRunning) return;
+            gameRunning = true;
+            resetGame();
+            document.getElementById('startBtn').textContent = '⏸️ 游戏中...';
+            spawnItems();
+        }
+        
+        function resetGame() {
+            gameRunning = false;
+            score = 0;
+            lives = 3;
+            gameSpeed = 3;
+            goldCoins = [];
+            diamonds = [];
+            bombs = [];
+            basket.x = canvas.width / 2 - basket.width / 2;
+            document.getElementById('score').textContent = score;
+            updateLives();
+            document.getElementById('startBtn').textContent = '🎮 开始游戏';
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('coinGameHighScore', highScore);
+                document.getElementById('highScore').textContent = highScore;
+            }
+            
+            // 游戏结束画面
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 40px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🏆 游戏结束!', canvas.width / 2, canvas.height / 2 - 40);
+            
+            ctx.fillStyle = 'white';
+            ctx.font = '30px Arial';
+            ctx.fillText(`得分: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+            
+            ctx.font = '20px Arial';
+            ctx.fillStyle = '#00FFFF';
+            ctx.fillText(`最高分: ${highScore}`, canvas.width / 2, canvas.height / 2 + 60);
+            
+            document.getElementById('startBtn').textContent = '🔄 再来一次';
+        }
+        
+        // 启动游戏循环
+        gameLoop();
+    </script>
+</body>
+</html>
