@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f3460"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <text x="600" y="250" font-family="Arial" font-size="80" fill="#667eea" text-anchor="middle" font-weight="bold">🎮 Roblox 游戏中心</text>
+  <text x="600" y="350" font-family="Arial" font-size="40" fill="#f093fb" text-anchor="middle">免费在线小游戏</text>
+  <text x="600" y="450" font-family="Arial" font-size="30" fill="#ffffff" text-anchor="middle">贪吃蛇 · 俄罗斯方块 · 超级马力欧 · 接金币</text>
+  <circle cx="200" cy="550" r="40" fill="#FFD700"/>
+  <rect x="500" y="500" width="200" height="100" fill="#8B4513" rx="10"/>
+  <circle cx="900" cy="550" r="30" fill="#00CED1"/>
+</svg>
