@@ -69,7 +69,7 @@ body {
 
   <canvas id="game" width="400" height="400"></canvas>
 
-  <p id="hint">滑动或点击控制方向：左半屏向左，右半屏向右</p>
+  <p id="hint">滑动可四方向；点击按主方向判定：上/下半屏可向上/向下，左/右半屏可向左/向右</p>
 
   <button id="startBtn" type="button">开始游戏</button>
 
@@ -85,15 +85,18 @@ body {
   var grid = canvas.width / cell;
   var snake = [];
   var food = { x: 0, y: 0 };
-  var dir = 1;
+  var dirX = 1;
+  var dirY = 0;
   var running = false;
   var timer = 0;
   var score = 0;
   var touchStartX = null;
+  var touchStartY = null;
 
   function reset() {
-    snake = [{ x: 8, y: 10 }, { x: 7, y: 10 }, { x: 6, y: 10 }];
-    dir = 1;
+    snake = [{ x: 8, y: 10 }];
+    dirX = 1;
+    dirY = 0;
     score = 0;
     placeFood();
     scoreEl.textContent = '得分: 0';
@@ -129,16 +132,47 @@ body {
   }
 
   function setLeft() {
-    if (dir !== 1) dir = -1;
+    if (dirX !== 1) {
+      dirX = -1;
+      dirY = 0;
+    }
   }
 
   function setRight() {
-    if (dir !== -1) dir = 1;
+    if (dirX !== -1) {
+      dirX = 1;
+      dirY = 0;
+    }
   }
 
-  function onControlX(x) {
+  function setUp() {
+    if (dirY !== 1) {
+      dirX = 0;
+      dirY = -1;
+    }
+  }
+
+  function setDown() {
+    if (dirY !== -1) {
+      dirX = 0;
+      dirY = 1;
+    }
+  }
+
+  function onControlPoint(x, y) {
     if (!running) return;
-    if (x < window.innerWidth / 2) setLeft();
+    var midX = window.innerWidth / 2;
+    var midY = window.innerHeight / 2;
+    var dx = x - midX;
+    var dy = y - midY;
+
+    if (Math.abs(dy) >= Math.abs(dx)) {
+      if (y < midY) setUp();
+      else setDown();
+      return;
+    }
+
+    if (x < midX) setLeft();
     else setRight();
   }
 
@@ -146,7 +180,7 @@ body {
     if (!running) return;
 
     var head = snake[0];
-    var next = { x: head.x + dir, y: head.y };
+    var next = { x: head.x + dirX, y: head.y + dirY };
 
     if (next.x < 0 || next.x >= grid || next.y < 0 || next.y >= grid) {
       end();
@@ -202,6 +236,7 @@ body {
     e.preventDefault();
     if (!e.touches || !e.touches[0]) return;
     touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
   }, { passive: false });
 
   body.addEventListener('touchmove', function (e) {
@@ -213,6 +248,7 @@ body {
 
     if (!e.changedTouches || !e.changedTouches[0]) return;
     var endX = e.changedTouches[0].clientX;
+    var endY = e.changedTouches[0].clientY;
 
     if (e.target && e.target.id === 'startBtn') {
       start();
@@ -220,20 +256,27 @@ body {
     }
 
     if (touchStartX === null) {
-      onControlX(endX);
+      onControlPoint(endX, endY);
       return;
     }
 
     var dx = endX - touchStartX;
+    var dy = endY - (touchStartY === null ? endY : touchStartY);
     touchStartX = null;
+    touchStartY = null;
 
-    if (Math.abs(dx) >= 18) {
-      if (dx > 0) setRight();
-      else setLeft();
+    if (Math.abs(dx) >= 18 || Math.abs(dy) >= 18) {
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        if (dx > 0) setRight();
+        else setLeft();
+      } else {
+        if (dy > 0) setDown();
+        else setUp();
+      }
       return;
     }
 
-    onControlX(endX);
+    onControlPoint(endX, endY);
   }, { passive: false });
 
   body.addEventListener('click', function (e) {
@@ -244,7 +287,7 @@ body {
       return;
     }
 
-    onControlX(e.clientX);
+    onControlPoint(e.clientX, e.clientY);
   }, { passive: false });
 
   reset();
