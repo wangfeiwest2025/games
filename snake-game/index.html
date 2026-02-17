@@ -5,176 +5,58 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>贪吃蛇</title>
 <style>
-* { margin: 0; padding: 0; }
-html, body { width: 100%; height: 100%; overflow: hidden; }
-body {
-  font-family: Arial, sans-serif;
-  background: #1a1a2e;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  touch-action: none;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-}
-#gameArea {
-  position: relative;
-  width: 300px;
-  height: 300px;
-  background: #0a0a1a;
-  border: 2px solid #4ecdc4;
-  border-radius: 8px;
-}
-canvas { display: block; }
-#btn {
-  margin-top: 20px;
-  padding: 15px 50px;
-  font-size: 18px;
-  background: #4ecdc4;
-  border: none;
-  border-radius: 25px;
-  color: white;
-  cursor: pointer;
-}
-#msg { color: #aaa; margin-top: 10px; font-size: 14px; }
+*{margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;}
+body{background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Arial,tahoma,sans-serif;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+#wrap{width:300px;text-align:center;}
+#c{background:#0a0a1a;border:2px solid #4ecdc4;border-radius:4px;}
+#btn{display:block;width:100%;margin-top:15px;padding:12px;font-size:16px;background:#4ecdc4;border:none;border-radius:4px;color:#fff;cursor:pointer;}
+#msg{color:#888;font-size:12px;margin-top:10px;}
 </style>
 </head>
 <body>
-<div id="gameArea"><canvas id="c" width="300" height="300"></canvas></div>
-<button id="btn" onclick="startGame()">开始游戏</button>
-<p id="msg">点击屏幕左右区域控制方向</p>
+<div id="wrap"><canvas id="c" width="300" height="300"></canvas><button id="btn">点击开始游戏</button><p id="msg">点击屏幕左半边← →点击屏幕右半边</p></div>
 <script>
-var c = document.getElementById('c');
-var ctx = c.getContext('2d');
-var btn = document.getElementById('btn');
-var msg = document.getElementById('msg');
-var running = false;
-var snake = [], food = {}, dir = {x:1,y:0}, score = 0;
-var timer = null;
+// 游戏变量
+var c=document.getElementById('c'),ctx=c.getContext('2d'),btn=document.getElementById('btn'),msg=document.getElementById('msg');
+var s=[{x:10,y:10},{x:9,y:10},{x:8,y:10}],f={x:5,y:5},d={x:1,y:0},sc=0,r=false,to=null;
 
-function init() {
-  snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
-  dir = {x:1,y:0};
-  score = 0;
-  placeFood();
-  draw();
-  btn.innerText = '开始游戏';
-  msg.innerText = '点击屏幕左右区域控制方向';
-}
+// 初始化
+function init(){s=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];d={x:1,y:0};sc=0;placeF();draw();btn.innerText='点击开始游戏';msg.innerText='点击屏幕左半边← →点击屏幕右半边';}
 
-function placeFood() {
-  var good = false;
-  while(!good) {
-    food = {x:Math.floor(Math.random()*15),y:Math.floor(Math.random()*15)};
-    good = true;
-    for(var i=0;i<snake.length;i++) {
-      if(snake[i].x==food.x && snake[i].y==food.y) good=false;
-    }
-  }
-}
+// 放置食物
+function placeF(){var ok=false;while(!ok){f={x:Math.floor(Math.random()*15),y:Math.floor(Math.random()*15)};ok=true;for(var i=0;i<s.length;i++)if(s[i].x==f.x&&s[i].y==f.y)ok=false;}}
 
-function draw() {
-  ctx.fillStyle = '#0a0a1a';
-  ctx.fillRect(0,0,300,300);
-  
-  ctx.fillStyle = '#4ecdc4';
-  for(var i=0;i<snake.length;i++) {
-    ctx.fillRect(snake[i].x*20+1, snake[i].y*20+1, 18, 18);
-  }
-  
-  ctx.fillStyle = '#ff6b6b';
-  ctx.fillRect(food.x*20+2, food.y*20+2, 16, 16);
-}
+// 绘制
+function draw(){ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,300,300);ctx.fillStyle='#4ecdc4';for(var i=0;i<s.length;i++)ctx.fillRect(s[i].x*20+1,s[i].y*20+1,18,18);ctx.fillStyle='#ff6b6b';ctx.fillRect(f.x*20+2,f.y*20+2,16,16);}
 
-function update() {
-  if(!running) return;
-  
-  var head = {x:snake[0].x+dir.x, y:snake[0].y+dir.y};
-  
-  if(head.x<0 || head.x>=15 || head.y<0 || head.y>=15 || 
-     snake.some(function(s){return s.x==head.x && s.y==head.y})) {
-    gameOver();
-    return;
-  }
-  
-  snake.unshift(head);
-  if(head.x==food.x && head.y==food.y) {
-    score+=10;
-    placeFood();
-  } else {
-    snake.pop();
-  }
-  
-  draw();
-  timer = setTimeout(update, 150);
-}
+// 游戏循环
+function loop(){if(!r)return;var h={x:s[0].x+d.x,y:s[0].y+d.y};if(h.x<0||h.x>=15||h.y<0||h.y>=15||s.some(function(x){return x.x==h.x&&x.y==h.y})){end();return;}s.unshift(h);if(h.x==f.x&&h.y==f.y){sc+=10;placeF();}else{s.pop();}draw();to=setTimeout(loop,150);}
 
-function startGame() {
-  if(running) return;
-  running = true;
-  init();
-  update();
-  btn.innerText = '游戏中...';
-  btn.disabled = true;
-}
+// 开始
+function start(){if(r)return;r=true;init();loop();btn.innerText='游戏中...';btn.disabled=true;}
 
-function gameOver() {
-  running = false;
-  if(timer) clearTimeout(timer);
-  btn.disabled = false;
-  btn.innerText = '重新开始';
-  msg.innerText = '游戏结束! 得分: ' + score;
-  
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillRect(0,0,300,300);
-  ctx.fillStyle = 'white';
-  ctx.font = '24px Arial';
-  ctx.textAlign = 'center';
-  ctx.fillText('游戏结束!',150,140);
-  ctx.font = '16px Arial';
-  ctx.fillText('得分: '+score,150,170);
-}
+// 结束
+function end(){r=false;if(to)clearTimeout(to);btn.disabled=false;btn.innerText='重新开始';ctx.fillStyle='rgba(0,0,0,0.8)';ctx.fillRect(0,0,300,300);ctx.fillStyle='#fff';ctx.font='20px Arial';ctx.textAlign='center';ctx.fillText('游戏结束',150,150);ctx.font='14px Arial';ctx.fillText('得分:'+sc,150,175);}
 
-// 触摸控制 - 最简单可靠的方式
-var touchStartX = 0;
-document.addEventListener('touchstart',function(e){
-  touchStartX = e.touches[0].clientX;
-},false);
+// 控制
+function left(){if(d.x!=1)d={x:-1,y:0};}
+function right(){if(d.x!=-1)d={x:1,y:0};}
 
-document.addEventListener('touchend',function(e){
-  if(!running) {
-    startGame();
-    return;
-  }
-  var touchEndX = e.changedTouches[0].clientX;
-  var diff = touchEndX - touchStartX;
-  if(Math.abs(diff)>10) {
-    if(diff>0 && dir.x!==-1) dir={x:1,y:0};
-    else if(diff<0 && dir.x!==1) dir={x:-1,y:0};
-  }
-},false);
+// 触摸事件
+document.body.addEventListener('touchstart',function(e){e.preventDefault();var x=e.touches[0].clientX;window.tx=x;},false);
+document.body.addEventListener('touchend',function(e){e.preventDefault();if(!r){start();return;}var x=e.changedTouches[0].clientX;if(Math.abs(x-window.tx)>20){if(x>window.tx)right();else left();}else{if(x<window.innerWidth/2)left();else right();}},false);
 
-// 点击控制
-c.addEventListener('click',function(e){
-  if(!running) {
-    startGame();
-    return;
-  }
-  var rect = c.getBoundingClientRect();
-  var x = e.clientX - rect.left;
-  if(x<100 && dir.x!==-1) dir={x:1,y:0};
-  else if(x>200 && dir.x!==1) dir={x:-1,y:0};
-});
+// 点击事件
+document.body.addEventListener('click',function(e){if(!r){start();return;}var x=e.clientX;if(x<window.innerWidth/2)left();else right();});
 
-// 键盘控制
-document.addEventListener('keydown',function(e){
-  if(e.key=='ArrowLeft' && dir.x!==1) dir={x:-1,y:0};
-  if(e.key=='ArrowRight' && dir.x!==-1) dir={x:1,y:0};
-  if(e.key=='ArrowUp' && dir.y!==1) dir={x:0,y:-1};
-  if(e.key=='ArrowDown' && dir.y!==-1) dir={x:0,y:1};
-});
+// 键盘事件
+document.addEventListener('keydown',function(e){if(e.key=='ArrowLeft')left();if(e.key=='ArrowRight')right();});
 
+// 按钮
+btn.onclick=start;
+
+// 开始
 init();
 </script>
 </body>
