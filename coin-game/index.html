@@ -374,7 +374,12 @@
         function startGame() {
             if (gameRunning) return;
             gameRunning = true;
-            resetGame();
+            // 不重置分数，只重置游戏物品
+            goldCoins = [];
+            diamonds = [];
+            bombs = [];
+            gameSpeed = 3;
+            basket.x = canvas.width / 2 - basket.width / 2;
             document.getElementById('startBtn').textContent = '⏸️ 游戏中...';
             spawnItems();
         }
@@ -391,6 +396,10 @@
             document.getElementById('score').textContent = score;
             updateLives();
             document.getElementById('startBtn').textContent = '🎮 开始游戏';
+            
+            // 重绘背景
+            drawBackground();
+            drawBasket();
         }
         
         function gameOver() {
