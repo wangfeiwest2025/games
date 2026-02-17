@@ -1,63 +1,254 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>贪吃蛇</title>
 <style>
-*{margin:0;padding:0;}
-html,body{width:100%;height:100%;overflow:hidden;}
-body{background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Arial,tahoma,sans-serif;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
-#wrap{width:300px;text-align:center;}
-#c{background:#0a0a1a;border:2px solid #4ecdc4;border-radius:4px;}
-#btn{display:block;width:100%;margin-top:15px;padding:12px;font-size:16px;background:#4ecdc4;border:none;border-radius:4px;color:#fff;cursor:pointer;}
-#msg{color:#888;font-size:12px;margin-top:10px;}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #0b1020;
+  color: #d9e4ff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#top {
+  width: min(96vw, 420px);
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-top: env(safe-area-inset-top, 0px);
+}
+
+#game {
+  width: min(96vw, 420px);
+  aspect-ratio: 1 / 1;
+  border: 2px solid #3f84ff;
+  border-radius: 10px;
+  background: #050916;
+}
+
+#hint {
+  width: min(96vw, 420px);
+  font-size: 12px;
+  opacity: 0.9;
+  text-align: center;
+}
+
+#startBtn {
+  width: min(96vw, 420px);
+  height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: #3f84ff;
+  color: #fff;
+  font-size: 16px;
+  margin-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+#startBtn:disabled {
+  opacity: 0.65;
+}
 </style>
 </head>
 <body>
-<div id="wrap"><canvas id="c" width="300" height="300"></canvas><button id="btn">点击开始游戏</button><p id="msg">点击屏幕左半边← →点击屏幕右半边</p></div>
+  <div id="top">
+    <span id="score">得分: 0</span>
+    <span id="state">未开始</span>
+  </div>
+
+  <canvas id="game" width="400" height="400"></canvas>
+
+  <p id="hint">滑动或点击控制方向：左半屏向左，右半屏向右</p>
+
+  <button id="startBtn" type="button">开始游戏</button>
+
 <script>
-// 游戏变量
-var c=document.getElementById('c'),ctx=c.getContext('2d'),btn=document.getElementById('btn'),msg=document.getElementById('msg');
-var s=[{x:10,y:10},{x:9,y:10},{x:8,y:10}],f={x:5,y:5},d={x:1,y:0},sc=0,r=false,to=null;
+(function () {
+  var body = document.body;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var scoreEl = document.getElementById('score');
+  var stateEl = document.getElementById('state');
 
-// 初始化
-function init(){s=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];d={x:1,y:0};sc=0;placeF();draw();btn.innerText='点击开始游戏';msg.innerText='点击屏幕左半边← →点击屏幕右半边';}
+  var cell = 20;
+  var grid = canvas.width / cell;
+  var snake = [];
+  var food = { x: 0, y: 0 };
+  var dir = 1;
+  var running = false;
+  var timer = 0;
+  var score = 0;
+  var touchStartX = null;
 
-// 放置食物
-function placeF(){var ok=false;while(!ok){f={x:Math.floor(Math.random()*15),y:Math.floor(Math.random()*15)};ok=true;for(var i=0;i<s.length;i++)if(s[i].x==f.x&&s[i].y==f.y)ok=false;}}
+  function reset() {
+    snake = [{ x: 8, y: 10 }, { x: 7, y: 10 }, { x: 6, y: 10 }];
+    dir = 1;
+    score = 0;
+    placeFood();
+    scoreEl.textContent = '得分: 0';
+    draw();
+  }
 
-// 绘制
-function draw(){ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,300,300);ctx.fillStyle='#4ecdc4';for(var i=0;i<s.length;i++)ctx.fillRect(s[i].x*20+1,s[i].y*20+1,18,18);ctx.fillStyle='#ff6b6b';ctx.fillRect(f.x*20+2,f.y*20+2,16,16);}
+  function placeFood() {
+    var ok = false;
+    while (!ok) {
+      food.x = Math.floor(Math.random() * grid);
+      food.y = Math.floor(Math.random() * grid);
+      ok = true;
+      for (var i = 0; i < snake.length; i++) {
+        if (snake[i].x === food.x && snake[i].y === food.y) {
+          ok = false;
+          break;
+        }
+      }
+    }
+  }
 
-// 游戏循环
-function loop(){if(!r)return;var h={x:s[0].x+d.x,y:s[0].y+d.y};if(h.x<0||h.x>=15||h.y<0||h.y>=15||s.some(function(x){return x.x==h.x&&x.y==h.y})){end();return;}s.unshift(h);if(h.x==f.x&&h.y==f.y){sc+=10;placeF();}else{s.pop();}draw();to=setTimeout(loop,150);}
+  function draw() {
+    ctx.fillStyle = '#050916';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-// 开始
-function start(){if(r)return;r=true;init();loop();btn.innerText='游戏中...';btn.disabled=true;}
+    ctx.fillStyle = '#3f84ff';
+    for (var i = 0; i < snake.length; i++) {
+      ctx.fillRect(snake[i].x * cell + 1, snake[i].y * cell + 1, cell - 2, cell - 2);
+    }
 
-// 结束
-function end(){r=false;if(to)clearTimeout(to);btn.disabled=false;btn.innerText='重新开始';ctx.fillStyle='rgba(0,0,0,0.8)';ctx.fillRect(0,0,300,300);ctx.fillStyle='#fff';ctx.font='20px Arial';ctx.textAlign='center';ctx.fillText('游戏结束',150,150);ctx.font='14px Arial';ctx.fillText('得分:'+sc,150,175);}
+    ctx.fillStyle = '#ff6b6b';
+    ctx.fillRect(food.x * cell + 2, food.y * cell + 2, cell - 4, cell - 4);
+  }
 
-// 控制
-function left(){if(d.x!=1)d={x:-1,y:0};}
-function right(){if(d.x!=-1)d={x:1,y:0};}
+  function setLeft() {
+    if (dir !== 1) dir = -1;
+  }
 
-// 触摸事件
-document.body.addEventListener('touchstart',function(e){e.preventDefault();var x=e.touches[0].clientX;window.tx=x;},false);
-document.body.addEventListener('touchend',function(e){e.preventDefault();if(!r){start();return;}var x=e.changedTouches[0].clientX;if(Math.abs(x-window.tx)>20){if(x>window.tx)right();else left();}else{if(x<window.innerWidth/2)left();else right();}},false);
+  function setRight() {
+    if (dir !== -1) dir = 1;
+  }
 
-// 点击事件
-document.body.addEventListener('click',function(e){if(!r){start();return;}var x=e.clientX;if(x<window.innerWidth/2)left();else right();});
+  function onControlX(x) {
+    if (!running) return;
+    if (x < window.innerWidth / 2) setLeft();
+    else setRight();
+  }
 
-// 键盘事件
-document.addEventListener('keydown',function(e){if(e.key=='ArrowLeft')left();if(e.key=='ArrowRight')right();});
+  function step() {
+    if (!running) return;
 
-// 按钮
-btn.onclick=start;
+    var head = snake[0];
+    var next = { x: head.x + dir, y: head.y };
 
-// 开始
-init();
+    if (next.x < 0 || next.x >= grid || next.y < 0 || next.y >= grid) {
+      end();
+      return;
+    }
+
+    for (var i = 0; i < snake.length; i++) {
+      if (snake[i].x === next.x && snake[i].y === next.y) {
+        end();
+        return;
+      }
+    }
+
+    snake.unshift(next);
+
+    if (next.x === food.x && next.y === food.y) {
+      score += 10;
+      scoreEl.textContent = '得分: ' + score;
+      placeFood();
+    } else {
+      snake.pop();
+    }
+
+    draw();
+    timer = setTimeout(step, 120);
+  }
+
+  function start() {
+    if (running) return;
+    if (timer) clearTimeout(timer);
+    running = true;
+    stateEl.textContent = '进行中';
+    reset();
+    step();
+  }
+
+  function end() {
+    running = false;
+    if (timer) clearTimeout(timer);
+    stateEl.textContent = '已结束';
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.font = '24px sans-serif';
+    ctx.fillText('游戏结束', canvas.width / 2, canvas.height / 2 - 8);
+    ctx.font = '16px sans-serif';
+    ctx.fillText('得分: ' + score, canvas.width / 2, canvas.height / 2 + 22);
+  }
+
+  body.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+    if (!e.touches || !e.touches[0]) return;
+    touchStartX = e.touches[0].clientX;
+  }, { passive: false });
+
+  body.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  body.addEventListener('touchend', function (e) {
+    e.preventDefault();
+
+    if (!e.changedTouches || !e.changedTouches[0]) return;
+    var endX = e.changedTouches[0].clientX;
+
+    if (e.target && e.target.id === 'startBtn') {
+      start();
+      return;
+    }
+
+    if (touchStartX === null) {
+      onControlX(endX);
+      return;
+    }
+
+    var dx = endX - touchStartX;
+    touchStartX = null;
+
+    if (Math.abs(dx) >= 18) {
+      if (dx > 0) setRight();
+      else setLeft();
+      return;
+    }
+
+    onControlX(endX);
+  }, { passive: false });
+
+  body.addEventListener('click', function (e) {
+    e.preventDefault();
+
+    if (e.target && e.target.id === 'startBtn') {
+      start();
+      return;
+    }
+
+    onControlX(e.clientX);
+  }, { passive: false });
+
+  reset();
+})();
 </script>
 </body>
 </html>
