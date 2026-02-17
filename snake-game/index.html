@@ -290,6 +290,22 @@ body {
     onControlPoint(e.clientX, e.clientY);
   }, { passive: false });
 
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setUp();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setDown();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setLeft();
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setRight();
+    }
+  });
+
   reset();
 })();
 </script>
