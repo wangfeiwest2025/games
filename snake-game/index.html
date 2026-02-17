@@ -2,10 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Snake Game / 贪吃蛇</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
             display: flex;
             flex-direction: column;
@@ -14,8 +14,10 @@
             min-height: 100vh;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            touch-action: none;
         }
-        .game-wrapper { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; padding: 20px; }
+        .game-wrapper { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; padding: 20px; touch-action: none; }
         .game-container, .controls-section {
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
@@ -23,6 +25,7 @@
             border-radius: 25px;
             border: 1px solid rgba(255,255,255,0.2);
             box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+            touch-action: none;
         }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
         h1 { color: #fff; font-size: 1.5em; }
@@ -684,6 +687,39 @@
                 case'ArrowLeft': case'a': case'A': if(dir.x!==1) next={x:-1,y:0}; e.preventDefault(); break;
                 case'ArrowRight': case'd': case'D': if(dir.x!==-1) next={x:1,y:0}; e.preventDefault(); break;
             }
+        });
+
+        // 触摸控制
+        let touchStartX = 0;
+        canvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            touchStartX = e.touches[0].clientX;
+            if (!running) startGame();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            if (!running || paused) return;
+            let touchEndX = e.changedTouches[0].clientX;
+            let diff = touchEndX - touchStartX;
+            if (Math.abs(diff) > 30) {
+                if (diff > 0 && dir.x !== -1) next = { x: 1, y: 0 };
+                else if (diff < 0 && dir.x !== 1) next = { x: -1, y: 0 };
+            }
+        }, { passive: false });
+
+        // 手机端点击屏幕区域切换方向
+        canvas.addEventListener('click', function(e) {
+            if (!running || paused) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const centerX = rect.width / 2;
+            if (x < centerX - 50 && dir.x !== 1) next = { x: -1, y: 0 };
+            else if (x > centerX + 50 && dir.x !== -1) next = { x: 1, y: 0 };
         });
 
         draw();
