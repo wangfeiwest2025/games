@@ -331,6 +331,26 @@
       }
     });
 
+    // Touch support for mobile
+    canvas.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      var rect = canvas.getBoundingClientRect();
+      var scaleX = canvas.width / rect.width;
+      var touch = e.touches[0];
+      paddle.x = (touch.clientX - rect.left) * scaleX - paddle.w / 2;
+      paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, paddle.x));
+      if (state === 'ready') {
+        ball.x = paddle.x + paddle.w / 2;
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      if (state === 'ready' || state === 'paused') {
+        state = 'running';
+      }
+    }, { passive: false });
+
     canvas.addEventListener('click', startGame);
 
     langBtn.addEventListener('click', function() {
